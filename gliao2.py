@@ -163,8 +163,9 @@ def pretty_print_path(world: List[List[str]], path: List[Tuple[int, int]], start
         if (position == goal):
             completed_map[position[1]][position[0]] = '🎁'
         old_position = position
-    for row in completed_map:
-        st.write("".join(row))
+    st.dataframe(completed_map)
+    #for row in completed_map:
+    #    st.write("".join(row))
     return pathcost
 
 small_start = (0, 0)
