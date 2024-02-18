@@ -213,30 +213,47 @@ def display_search_world(world):
         path_cost = pretty_print_path(world, path, start, goal, COSTS)
         path_cost_container.header(f"Total path cost: {path_cost}")
 
-def replace_old_emoji_with_new_emoji(old_emoji, new_emoji):
-    saved_edited_rows = st.session_state.get("_world").get("edited_rows")
-    start_x, start_y = find_emoji(old_emoji, full_world)
-    if saved_edited_rows.get(str(start_y)) == None:
-        saved_edited_rows[str(start_y)] = {}
-    saved_edited_rows[str(start_y)][str(start_x)] = new_emoji
-    full_world[start_y][start_x] = new_emoji
-
 def replace_old_start_with_plain():
-    replace_old_emoji_with_new_emoji('🚶🏿‍♀️', '🌾')
+    old_start_x, old_start_y = get_start(full_world)
+    add_edited_row_to_saved_edited_rows(str(old_start_y), str(old_start_x), '🌾')
+    full_world[old_start_y][old_start_x] = '🌾'
 
 def replace_old_goal_with_plain():
-    replace_old_emoji_with_new_emoji('🎁', '🌾')
+    old_goal_x, old_goal_y = get_goal(full_world)
+    add_edited_row_to_saved_edited_rows(str(old_goal_y), str(old_goal_x), '🌾')
+    full_world[old_goal_y][old_goal_x] = '🌾'
+
+def get_saved_edited_rows():
+    saved_world = st.session_state.get("_world")
+    if saved_world == None:
+        saved_world = {}
+        st.session_state["_world"] = saved_world
+        saved_edited_rows = {}
+        saved_world["edited_rows"] = saved_edited_rows
+    else:
+        saved_edited_rows = saved_world.get("edited_rows")
+        if saved_edited_rows == None:
+            saved_edited_rows = {}
+            saved_world["edited_rows"] = saved_edited_rows
+    return saved_edited_rows
+
+def add_edited_row_to_saved_edited_rows(row_index, col_index, emoji):
+    col = {col_index: emoji}
+    saved_edited_rows = get_saved_edited_rows()
+    saved_edited_rows[row_index] = col
 
 def data_editor_callback():
     edited_rows = st.session_state.get("world").get("edited_rows")
-
+    st.write(edited_rows)
     #check if adding start or goal
     for row_index in edited_rows:
         for col_index in edited_rows[row_index]:
             if edited_rows[row_index][col_index] == '🚶🏿‍♀️':
+                st.write("found replacing start")
                 replace_old_start_with_plain()
             if edited_rows[row_index][col_index] == '🎁':
                 replace_old_goal_with_plain()
+    copy_data_editor_edited_rows_to_saved_edited_rows()
 
 def display_edit_world(world):
     st.header("Instructions:")
@@ -249,20 +266,13 @@ def display_edit_world(world):
             options=['🚶🏿‍♀️', '🌾', '🌲', '⛰', '🐊','🌋', '🎁'])
     st.data_editor(world, key="world", hide_index=True, height=1000, column_config=terrain_choices, on_change=data_editor_callback)
 
-def copy_data_editor_edited_rows_to_session_state(data_editor_key: str, saved_data_editor_key: str):
-    edited_rows = st.session_state.get(data_editor_key).get("edited_rows")
+def copy_data_editor_edited_rows_to_saved_edited_rows():
+    edited_rows = st.session_state.get("world").get("edited_rows")
 
-    #First copy do a deep copy
-    if (st.session_state.get(saved_data_editor_key) == None):
-        st.session_state[saved_data_editor_key] = deepcopy(st.session_state.get(data_editor_key))
-    else:
-    #All subsequent copies, merge current edits with previous edits
-        saved_data_editor_edited_rows = st.session_state.get(saved_data_editor_key).get("edited_rows")
-        for row_index in edited_rows:
-            for col_index in edited_rows[row_index]:
-                if saved_data_editor_edited_rows.get(row_index) == None:
-                    saved_data_editor_edited_rows[row_index] = {}
-                saved_data_editor_edited_rows[row_index][col_index] = edited_rows[row_index][col_index]
+    #merge current edits with saved previous edits
+    for row_index in edited_rows:
+        for col_index in edited_rows[row_index]:
+            add_edited_row_to_saved_edited_rows(row_index, col_index, edited_rows[row_index][col_index])
 
 def print_legend():
     st.sidebar.markdown("Legend:")
@@ -273,11 +283,7 @@ def print_legend():
     st.sidebar.markdown("⛰ - hills.  cost=5")
     st.sidebar.markdown("🐊- swamp.  cost=7")
     st.sidebar.markdown("🌋 - mountains.  impassible")
-    st.sidebar.write("_world")
-    st.sidebar.write(st.session_state.get("_world").get("edited_rows"))
-    st.sidebar.write("world")
-    st.sidebar.write(st.session_state.get("world"))
-
+    st.sidebar.write(get_saved_edited_rows())
 
 st.markdown(
     """
@@ -291,26 +297,27 @@ st.markdown(
 
 #First Run
 if (st.session_state.get("edit") == None and st.session_state.get("search") == None):
-    st.session_state["_world"] = {"edited_rows": {"0": {"0": '🚶🏿‍♀️'}, "26": {"26": '🎁'}}}
+    add_edited_row_to_saved_edited_rows("0", "0", '🚶🏿‍♀️')
+    add_edited_row_to_saved_edited_rows("26", "26", '🎁')
+#    st.session_state["_world"] = {"edited_rows": {"0": {"0": '🚶🏿‍♀️'}, "26": {"26": '🎁'}}}
     display_edit_world(full_world)
     
 #Edit World Cell
 if (st.session_state.get("edit") == False and st.session_state.get("search") == False):
-    copy_data_editor_edited_rows_to_session_state("world", "_world")
-    update_world_map(full_world, st.session_state.get("_world").get("edited_rows"))
+    copy_data_editor_edited_rows_to_saved_edited_rows()
+    update_world_map(full_world, get_saved_edited_rows())
     display_edit_world(full_world)
 
+#Edit World Button Clicked
 if st.sidebar.button("Edit World", key="edit"):
-    if (st.session_state.get("_world") != None):
-        update_world_map(full_world, st.session_state.get("_world").get("edited_rows"))
-    if (st.session_state.get("world") != None):
-        update_world_map(full_world, st.session_state.get("world").get("edited_rows"))
+    update_world_map(full_world, get_saved_edited_rows())
+#    if (st.session_state.get("world") != None):
+#        update_world_map(full_world, st.session_state.get("world").get("edited_rows"))
     display_edit_world(full_world)
 
-
+#Search World Button Clicked
 if st.sidebar.button("Search World", key="search"):
-    if (st.session_state.get("_world") != None):
-        update_world_map(full_world, st.session_state.get("_world").get("edited_rows"))
+    update_world_map(full_world, get_saved_edited_rows())
     display_search_world(full_world)
 
 print_legend()
