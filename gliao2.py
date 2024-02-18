@@ -292,7 +292,7 @@ def display_search_world(world:List[List[str]]):
     goal = get_goal(world)
     path = a_star_search(world, start, goal, COSTS, MOVES, heuristic)
     if (path == None or None in path):
-        path_cost_container.header(f"No path found!!")
+        path_cost_container.header("No path found!!")
         st.table(world)
     else:
         path_cost = pretty_print_path(world, path, start, goal, COSTS)
@@ -332,7 +332,7 @@ def replace_old_goal_with_plain():
 def get_saved_edited_rows():
     """
     get_saved_edited_rows returns dictionary that stores all the previous edits.  It looks a little complex, but it's
-    to handle the initialization of the dictionary structure.
+    to handle the initialization of the nested dictionary structure.
     Uses: . Used By: add_edited_row_to_saved_edited_rows, Edit World Cell click, Edit World button click, Find Path button click.
 
     returns Dict[str, Dict[str, str]]:  Contains all the edits in the session.  The outside Dict is the row.  
@@ -486,6 +486,6 @@ if st.sidebar.button("Find Path", key="search"):
     update_world_map(full_world, get_saved_edited_rows())
     display_search_world(full_world)
 
-#print legend in the sidebar
+#print legend in the sidebar in all cases
 print_legend()
 
