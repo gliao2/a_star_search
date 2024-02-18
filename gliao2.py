@@ -169,6 +169,9 @@ def a_star_search(world: List[List[str]], start: Tuple[int, int], goal: Tuple[in
 # Below is modified code from Module 1 or new code for Module 4
 
 def pretty_print_path(world: List[List[str]], path: List[Tuple[int, int]], start: Tuple[int, int], goal: Tuple[int, int], costs: Dict[str, int]) -> int:
+    """
+    pretty_print_path overlays the lowest path cost on the world and displays it as a streamlit table
+    """
     pathcost = 0
     completed_map = deepcopy(world)
     old_position = None
@@ -180,11 +183,47 @@ def pretty_print_path(world: List[List[str]], path: List[Tuple[int, int]], start
         if (position == goal):
             completed_map[position[1]][position[0]] = '🎁'
         old_position = position
+    
+    #Display a streamlit table with overlayed path 
     st.table(completed_map)
+
     return pathcost
 
+def display_path_coordinates(path: List[Tuple[int, int]]):
+    """
+    display_path_coordinates displays the coordinates of the path as text.  
+    Impure function displays path on streamlit main container
 
-def update_world_map(world, edited_rows):
+    path List[Tuple[int, int]]: List of tuples containing coordinates for lowest cost path to goal
+
+    returns:  None
+    """
+    path_coordinates = ""
+    coordinate_count = 0
+    for x, y in path:
+        coordinate_count+=1
+        if coordinate_count%15==0:
+            path_coordinates += "\n"
+        if path_coordinates == "":
+            path_coordinates += "(" + str(x) + ", " + str(y) + ")"
+        else:
+            path_coordinates += "->(" + str(x) + ", " + str(y) + ")"
+    st.text(path_coordinates)
+
+
+def update_world_map(world: List[List[str]], edited_rows: Dict[Dict[str: str]]):
+    """
+    update_world_map modifies the world with all the edits performed in the session.  A session is bound to a browser tab.
+    If a browser tab is refreshed that's a new session.  A differrent tab or a different browser is its own session.
+    The world is presented in 2 ways, edit mode and display mode.  In edit mode, the user can change start, goal, or any terrain.  
+    Each edit is stored in edited_rows.  These edits are then applied to the world.
+
+    world List[List[str]]: The world terrain map with start and goal
+    edited_rows Dict[Dict[str: str]]: Contains all the edits in the session.  The outside Dist is the row.  
+                                      The inside Dict is the Col.  The value is the Start, Goal, or Terrain
+
+    returns:  None
+    """
     for row_index in edited_rows:
         for col_index in edited_rows[row_index]:
             world[int(row_index)][int(col_index)] = edited_rows[row_index][col_index]
@@ -212,6 +251,7 @@ def display_search_world(world):
     else:
         path_cost = pretty_print_path(world, path, start, goal, COSTS)
         path_cost_container.header(f"Total path cost: {path_cost}")
+        display_path_coordinates(path)
 
 def replace_old_start_with_plain():
     old_start_x, old_start_y = get_start(full_world)
@@ -244,26 +284,27 @@ def add_edited_row_to_saved_edited_rows(row_index, col_index, emoji):
 
 def data_editor_callback():
     edited_rows = st.session_state.get("world").get("edited_rows")
-    st.write(edited_rows)
-    #check if adding start or goal
+
+    #check if adding new start or goal, if so replace the old start or goal
     for row_index in edited_rows:
         for col_index in edited_rows[row_index]:
             if edited_rows[row_index][col_index] == '🚶🏿‍♀️':
-                st.write("found replacing start")
                 replace_old_start_with_plain()
             if edited_rows[row_index][col_index] == '🎁':
                 replace_old_goal_with_plain()
+
+    #Save new edit with all other edits in this session
     copy_data_editor_edited_rows_to_saved_edited_rows()
 
 def display_edit_world(world):
     st.header("Instructions:")
     st.subheader("Double-Click any cell to select Terrain.  If you choose a new Start or Goal, the old Start or Goal will change to a Plain terrain")
     st.subheader("Copy/Paste also works, but only Start, Goal, or Terrain are allowed")
-    st.subheader("Click 'Search World' to find the least cost path to the Goal.  Click 'Edit World' to return to this screen")
+    st.subheader("Click 'Find Path' to find the least cost path to the Goal.  Click 'Edit World' to return to this screen")
     terrain_choices = {}
     for col_index in range(len(world[0])):
         terrain_choices[str(col_index)] = st.column_config.SelectboxColumn(
-            options=['🚶🏿‍♀️', '🌾', '🌲', '⛰', '🐊','🌋', '🎁'])
+            options=['🚶🏿‍♀️', '🌾', '🌲', '⛰', '🐊','🌋', '🎁'], required=True)
     st.data_editor(world, key="world", hide_index=True, height=1000, column_config=terrain_choices, on_change=data_editor_callback)
 
 def copy_data_editor_edited_rows_to_saved_edited_rows():
@@ -283,7 +324,6 @@ def print_legend():
     st.sidebar.markdown("⛰ - hills.  cost=5")
     st.sidebar.markdown("🐊- swamp.  cost=7")
     st.sidebar.markdown("🌋 - mountains.  impassible")
-    st.sidebar.write(get_saved_edited_rows())
 
 st.markdown(
     """
@@ -299,7 +339,6 @@ st.markdown(
 if (st.session_state.get("edit") == None and st.session_state.get("search") == None):
     add_edited_row_to_saved_edited_rows("0", "0", '🚶🏿‍♀️')
     add_edited_row_to_saved_edited_rows("26", "26", '🎁')
-#    st.session_state["_world"] = {"edited_rows": {"0": {"0": '🚶🏿‍♀️'}, "26": {"26": '🎁'}}}
     display_edit_world(full_world)
     
 #Edit World Cell
@@ -311,12 +350,10 @@ if (st.session_state.get("edit") == False and st.session_state.get("search") == 
 #Edit World Button Clicked
 if st.sidebar.button("Edit World", key="edit"):
     update_world_map(full_world, get_saved_edited_rows())
-#    if (st.session_state.get("world") != None):
-#        update_world_map(full_world, st.session_state.get("world").get("edited_rows"))
     display_edit_world(full_world)
 
 #Search World Button Clicked
-if st.sidebar.button("Search World", key="search"):
+if st.sidebar.button("Find Path", key="search"):
     update_world_map(full_world, get_saved_edited_rows())
     display_search_world(full_world)
 
