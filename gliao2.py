@@ -3,8 +3,6 @@ from math import sqrt
 from copy import deepcopy
 from typing import List, Tuple, Dict, Callable
 
-st.set_page_config(layout="wide", initial_sidebar_state="expanded")
-
 full_world = [
 ['🚶🏿‍♀️', '🌾', '🌾', '🌾', '🌾', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾'],
 ['🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌾', '🌾', '🌋', '🌋', '🌋', '🌋', '🌋', '🌋', '🌋', '🌾', '🌾'],
@@ -450,6 +448,8 @@ def print_legend():
     st.sidebar.markdown("⛰ - hills.  cost=5")
     st.sidebar.markdown("🐊- swamp.  cost=7")
     st.sidebar.markdown("🌋 - mountains.  impassible")
+
+st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
 #Set the sidebar width as narrow as we can so we have more space for the map
 st.markdown(
