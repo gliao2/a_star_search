@@ -1,8 +1,12 @@
 import streamlit as st
-st.title('A* Search 2')
+from math import sqrt
+from copy import deepcopy
+from typing import List, Tuple, Dict, Callable
+
+st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
 full_world = [
-['🌾', '🌾', '🌾', '🌾', '🌾', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾'],
+['🚶🏿‍♀️', '🌾', '🌾', '🌾', '🌾', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾'],
 ['🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌾', '🌾', '🌋', '🌋', '🌋', '🌋', '🌋', '🌋', '🌋', '🌾', '🌾'],
 ['🌾', '🌾', '🌾', '🌾', '🌋', '🌋', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌲', '🌋', '🌋', '🌋', '⛰', '⛰', '⛰', '🌋', '🌋', '⛰', '⛰'],
 ['🌾', '🌾', '🌾', '🌾', '⛰', '🌋', '🌋', '🌋', '🌲', '🌲', '🌲', '🌲', '🐊', '🐊', '🌲', '🌲', '🌲', '🌲', '🌲', '🌾', '🌾', '⛰', '⛰', '🌋', '🌋', '⛰', '🌾'],
@@ -28,7 +32,7 @@ full_world = [
 ['🌾', '⛰', '⛰', '🌾', '🌾', '⛰', '⛰', '⛰', '⛰', '⛰', '🌾', '🌾', '🌾', '🌾', '🌾', '⛰', '⛰', '🌋', '🌋', '⛰', '⛰', '🌾', '🐊', '🐊', '🐊', '🐊', '🐊'],
 ['⛰', '🌋', '⛰', '⛰', '⛰', '⛰', '🌾', '🌾', '🌾', '🌾', '🌾', '🌋', '🌋', '🌋', '⛰', '⛰', '🌋', '🌋', '🌾', '🌋', '🌋', '⛰', '⛰', '🐊', '🐊', '🐊', '🐊'],
 ['⛰', '🌋', '🌋', '🌋', '⛰', '🌾', '🌾', '🌾', '🌾', '🌾', '⛰', '⛰', '🌋', '🌋', '🌋', '🌋', '⛰', '⛰', '⛰', '⛰', '🌋', '🌋', '🌋', '🐊', '🐊', '🐊', '🐊'],
-['⛰', '⛰', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '⛰', '⛰', '⛰', '⛰', '⛰', '🌾', '🌾', '🌾', '🌾', '⛰', '⛰', '⛰', '🌾', '🌾', '🌾']
+['⛰', '⛰', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '🌾', '⛰', '⛰', '⛰', '⛰', '⛰', '🌾', '🌾', '🌾', '🌾', '⛰', '⛰', '⛰', '🌾', '🌾', '🎁']
 ]
 
 small_world = [
@@ -43,18 +47,17 @@ small_world = [
 
 MOVES = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
-COSTS = {'🌾': 1, '🌲': 3, '⛰': 5, '🐊': 7}
+COSTS = {'🚶🏿‍♀️': 0, '🌾': 1, '🌲': 3, '⛰': 5, '🐊': 7, '🎁': 0}
 
-from typing import List, Tuple, Dict, Callable
-from copy import deepcopy
-from math import sqrt
 
 def is_goal(current_state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]], goal: Tuple[int, int]):
     return current_state[0] == goal
 
+
 def add_to_explored(explored: Dict[Tuple[int, int], Tuple[int, float, Tuple[int, int]]], state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]):
     explored[state[0]] = state[1]
     return explored
+
 
 def path(current_state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]], explored: Dict[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]):
     return_path = []
@@ -67,14 +70,17 @@ def path(current_state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]
         state = None if state_metadata == None else state_metadata[2]
     return return_path[::-1]
 
+
 def get_next_state_on_frontier(frontier: List[Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]], use_dfs=False):
     if not use_dfs:
         frontier.sort(key=lambda state: state[1][0] + state[1][1])
     return frontier.pop() if use_dfs else frontier.pop(0)
 
+
 def add_to_frontier(frontier: List[Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]], state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]):
     frontier.append(state)
     return frontier
+
 
 def is_state_on_explored(state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]], explored: Dict[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]):
     if not state[0] in explored:
@@ -86,6 +92,7 @@ def is_state_on_explored(state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[i
         del explored[state_position]
         explored[state_position] = state[1]
     return True
+
 
 def is_state_on_frontier(state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]], frontier: List[Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]]):
     frontier_positions = [frontier_state[0] for frontier_state in frontier]
@@ -100,8 +107,10 @@ def is_state_on_frontier(state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[i
         frontier[frontier_index] = state
     return True
 
+
 def heuristic(current_position: Tuple[int, int], goal: Tuple[int, int]):
     return sqrt((current_position[0] - goal[0])**2 + (current_position[1] - goal[1])**2)
+
 
 def get_state_metadata(world: List[List[str]], position: Tuple[int, int], goal: Tuple[int, int], costs: Dict[str, int], heuristic: Callable, parent_state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]]):
     parent_cost = parent_state[1][0] if parent_state != None else 0
@@ -109,6 +118,7 @@ def get_state_metadata(world: List[List[str]], position: Tuple[int, int], goal: 
     g_n = parent_cost + costs[world[position[1]][position[0]]]
     h_n = heuristic(position, goal) if heuristic else None
     return (g_n, h_n, parent_position)
+
 
 def successors(current_state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int, int]]], world: List[List[str]], goal: Tuple[int, int], costs: Dict[str, int], moves: List[Tuple[int, int]], heuristic: Callable):
     children_states = []
@@ -120,6 +130,7 @@ def successors(current_state: Tuple[Tuple[int, int], Tuple[int, float, Tuple[int
             children_states.append(((next_position), get_state_metadata(
                 world, next_position, goal, costs, heuristic, current_state)))
     return children_states
+
 
 def get_path_icon(old_position: Tuple[int, int], new_position: Tuple[int, int]):
     path_icon = ''
@@ -133,10 +144,12 @@ def get_path_icon(old_position: Tuple[int, int], new_position: Tuple[int, int]):
         path_icon = '⏪'
     return path_icon
 
+
 def a_star_search(world: List[List[str]], start: Tuple[int, int], goal: Tuple[int, int], costs: Dict[str, int], moves: List[Tuple[int, int]], heuristic: Callable) -> List[Tuple[int, int]]:
     frontier = []
     explored = {}
-    add_to_frontier(frontier, (start, get_state_metadata(world, start, goal, costs, heuristic, None)))
+    add_to_frontier(frontier, (start, get_state_metadata(
+        world, start, goal, costs, heuristic, None)))
 
     while len(frontier) > 0:
         current_state = get_next_state_on_frontier(frontier)
@@ -151,6 +164,10 @@ def a_star_search(world: List[List[str]], start: Tuple[int, int], goal: Tuple[in
 
     return None
 
+# Above is unmodified code from Module 1
+#######################################################################################
+# Below is modified code from Module 1 or new code for Module 4
+
 def pretty_print_path(world: List[List[str]], path: List[Tuple[int, int]], start: Tuple[int, int], goal: Tuple[int, int], costs: Dict[str, int]) -> int:
     pathcost = 0
     completed_map = deepcopy(world)
@@ -163,24 +180,138 @@ def pretty_print_path(world: List[List[str]], path: List[Tuple[int, int]], start
         if (position == goal):
             completed_map[position[1]][position[0]] = '🎁'
         old_position = position
-    st.dataframe(completed_map)
-    #for row in completed_map:
-    #    st.write("".join(row))
+    st.table(completed_map)
     return pathcost
 
-small_start = (0, 0)
-small_goal = (len(small_world[0]) - 1, len(small_world) - 1)
-small_path = a_star_search(small_world, small_start, small_goal, COSTS, MOVES, heuristic)
-small_path_cost = pretty_print_path(small_world, small_path, small_start, small_goal, COSTS)
-st.write(f"total path cost: {small_path_cost}")
-#st.write(small_path)
 
-full_start = (0, 0)
-full_goal = (len(full_world[0]) - 1, len(full_world) - 1)
-full_path = a_star_search(full_world, full_start,
-                          full_goal, COSTS, MOVES, heuristic)
-full_path_cost = pretty_print_path(
-    full_world, full_path, full_start, full_goal, COSTS)
-st.write(f"total path cost: {full_path_cost}")
-#st.write(full_path)
+def update_world_map(world, edited_rows):
+    for row_index in edited_rows:
+        for col_index in edited_rows[row_index]:
+            world[int(row_index)][int(col_index)] = edited_rows[row_index][col_index]
+
+def find_emoji(emoji, world):
+    for row_index, row in enumerate(world):
+        for col_index, col in enumerate(row):
+            if col == emoji:
+                return (col_index, row_index)
+
+def get_start(world):
+    return find_emoji('🚶🏿‍♀️', world)
+
+def get_goal(world):
+    return find_emoji('🎁', world)
+
+def display_search_world(world):
+    path_cost_container = st.empty()
+    start = get_start(world)
+    goal = get_goal(world)
+    path = a_star_search(world, start, goal, COSTS, MOVES, heuristic)
+    if (path == None or None in path):
+        path_cost_container.header(f"No path found!!")
+        st.table(world)
+    else:
+        path_cost = pretty_print_path(world, path, start, goal, COSTS)
+        path_cost_container.header(f"Total path cost: {path_cost}")
+
+def replace_old_emoji_with_new_emoji(old_emoji, new_emoji):
+    saved_edited_rows = st.session_state.get("_world").get("edited_rows")
+    start_x, start_y = find_emoji(old_emoji, full_world)
+    if saved_edited_rows.get(str(start_y)) == None:
+        saved_edited_rows[str(start_y)] = {}
+    saved_edited_rows[str(start_y)][str(start_x)] = new_emoji
+    full_world[start_y][start_x] = new_emoji
+
+def replace_old_start_with_plain():
+    replace_old_emoji_with_new_emoji('🚶🏿‍♀️', '🌾')
+
+def replace_old_goal_with_plain():
+    replace_old_emoji_with_new_emoji('🎁', '🌾')
+
+def data_editor_callback():
+    edited_rows = st.session_state.get("world").get("edited_rows")
+
+    #check if adding start or goal
+    for row_index in edited_rows:
+        for col_index in edited_rows[row_index]:
+            if edited_rows[row_index][col_index] == '🚶🏿‍♀️':
+                replace_old_start_with_plain()
+            if edited_rows[row_index][col_index] == '🎁':
+                replace_old_goal_with_plain()
+
+def display_edit_world(world):
+    st.header("Instructions:")
+    st.subheader("Double-Click any cell to select Terrain.  If you choose a new Start or Goal, the old Start or Goal will change to a Plain terrain")
+    st.subheader("Copy/Paste also works, but only Start, Goal, or Terrain are allowed")
+    st.subheader("Click 'Search World' to find the least cost path to the Goal.  Click 'Edit World' to return to this screen")
+    terrain_choices = {}
+    for col_index in range(len(world[0])):
+        terrain_choices[str(col_index)] = st.column_config.SelectboxColumn(
+            options=['🚶🏿‍♀️', '🌾', '🌲', '⛰', '🐊','🌋', '🎁'])
+    st.data_editor(world, key="world", hide_index=True, height=1000, column_config=terrain_choices, on_change=data_editor_callback)
+
+def copy_data_editor_edited_rows_to_session_state(data_editor_key: str, saved_data_editor_key: str):
+    edited_rows = st.session_state.get(data_editor_key).get("edited_rows")
+
+    #First copy do a deep copy
+    if (st.session_state.get(saved_data_editor_key) == None):
+        st.session_state[saved_data_editor_key] = deepcopy(st.session_state.get(data_editor_key))
+    else:
+    #All subsequent copies, merge current edits with previous edits
+        saved_data_editor_edited_rows = st.session_state.get(saved_data_editor_key).get("edited_rows")
+        for row_index in edited_rows:
+            for col_index in edited_rows[row_index]:
+                if saved_data_editor_edited_rows.get(row_index) == None:
+                    saved_data_editor_edited_rows[row_index] = {}
+                saved_data_editor_edited_rows[row_index][col_index] = edited_rows[row_index][col_index]
+
+def print_legend():
+    st.sidebar.markdown("Legend:")
+    st.sidebar.markdown(f"🚶🏿‍♀️- Start. {get_start(full_world)}, cost=0")
+    st.sidebar.markdown(f"🎁- Goal. {get_goal(full_world)}, cost=0")
+    st.sidebar.markdown("🌾- plains. cost=1")
+    st.sidebar.markdown("🌲- forest. cost=3")
+    st.sidebar.markdown("⛰ - hills.  cost=5")
+    st.sidebar.markdown("🐊- swamp.  cost=7")
+    st.sidebar.markdown("🌋 - mountains.  impassible")
+    st.sidebar.write("_world")
+    st.sidebar.write(st.session_state.get("_world").get("edited_rows"))
+    st.sidebar.write("world")
+    st.sidebar.write(st.session_state.get("world"))
+
+
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 200px;
+        }
+    """,
+    unsafe_allow_html=True,
+)
+
+#First Run
+if (st.session_state.get("edit") == None and st.session_state.get("search") == None):
+    st.session_state["_world"] = {"edited_rows": {"0": {"0": '🚶🏿‍♀️'}, "26": {"26": '🎁'}}}
+    display_edit_world(full_world)
+    
+#Edit World Cell
+if (st.session_state.get("edit") == False and st.session_state.get("search") == False):
+    copy_data_editor_edited_rows_to_session_state("world", "_world")
+    update_world_map(full_world, st.session_state.get("_world").get("edited_rows"))
+    display_edit_world(full_world)
+
+if st.sidebar.button("Edit World", key="edit"):
+    if (st.session_state.get("_world") != None):
+        update_world_map(full_world, st.session_state.get("_world").get("edited_rows"))
+    if (st.session_state.get("world") != None):
+        update_world_map(full_world, st.session_state.get("world").get("edited_rows"))
+    display_edit_world(full_world)
+
+
+if st.sidebar.button("Search World", key="search"):
+    if (st.session_state.get("_world") != None):
+        update_world_map(full_world, st.session_state.get("_world").get("edited_rows"))
+    display_search_world(full_world)
+
+print_legend()
 
